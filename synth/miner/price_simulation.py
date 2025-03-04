@@ -5,7 +5,7 @@ from properscoring import crps_ensemble
 import time
 import aiohttp
 
-async def get_historical_prices(self, asset="BTC", lookback_minutes=60):
+async def get_historical_prices(asset="BTC", lookback_minutes=60):
         """
         Retrieves historical price data for volatility calculation.
         

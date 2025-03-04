@@ -1,7 +1,8 @@
 from synth.miner.price_simulation import (
     simulate_crypto_price_paths,
     get_asset_price,
-    simulate_crypto_price_paths_adaptive
+    simulate_crypto_price_paths_adaptive,
+    get_historical_prices
 )
 from synth.utils.helpers import (
     convert_prices_to_time_format,
@@ -50,6 +51,8 @@ def generate_simulations(
     if current_price is None:
         raise ValueError(f"Failed to fetch current price for asset: {asset}")
     
+    price_history = get_historical_prices()
+
     if model.lower() == "adaptive":
         simulations = simulate_crypto_price_paths_adaptive(
             current_price=current_price,
