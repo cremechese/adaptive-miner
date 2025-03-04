@@ -20,10 +20,13 @@
 import time
 import typing
 import bittensor as bt
+import aiohttp
+import numpy as np
 
 # import base miner class which takes care of most of the boilerplate
 from synth.base.miner import BaseMinerNeuron
 from synth.miner.simulations import generate_simulations
+from synth.miner.price_simulation import get_historical_prices
 from synth.protocol import Simulation
 
 
@@ -66,6 +69,8 @@ class Miner(BaseMinerNeuron):
         time_length = simulation_input.time_length
         num_simulations = simulation_input.num_simulations
 
+        historical_prices = await get_historical_prices(asset)
+
         # Standard deviation of the simulated price path
         sigma = self.config.simulation.sigma
 
@@ -76,6 +81,12 @@ class Miner(BaseMinerNeuron):
             time_length=time_length,
             num_simulations=num_simulations,
             sigma=sigma,
+            model="adaptive",
+            price_history=historical_prices,
+            base_scale=3.0,            # Optimal from parameter search
+            volatility_window=30,      # Optimal from parameter search
+            mean_reversion=0.01,       # Optimal from parameter search
+            fat_tails=True             # Optimal from parameter search
         )
 
         synapse.simulation_output = prediction

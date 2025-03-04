@@ -1,5 +1,8 @@
 from datetime import datetime, timedelta, timezone
+import numpy as np
+import time
 import typing
+import bittensor as bt
 
 
 def get_current_time() -> datetime:
@@ -29,7 +32,7 @@ def convert_prices_to_time_format(prices, start_time, time_increment):
                 {"time": time_point.isoformat(), "price": price}
             )
         result.append(single_prediction)
-
+    print(f"Sample prediction: {result[0]}")
     return result
 
 
