@@ -10,7 +10,7 @@ import pandas as pd
 import bittensor as bt
 import os
 
-async def get_historical_prices(self, asset="BTC", lookback_minutes=60):
+async def get_historical_prices(asset="BTC", lookback_minutes=60):
     """
     Retrieves historical price data from the local price file.
     
