@@ -1,72 +1,70 @@
 import numpy as np
-import requests
+import pandas as pd
 import bittensor as bt
-from properscoring import crps_ensemble
-import time
-import aiohttp
+import os
+from datetime import datetime, timedelta
+import requests
 
 async def get_historical_prices(asset="BTC", lookback_minutes=60):
-        """
-        Retrieves historical price data for volatility calculation.
+    """
+    Retrieves historical price data from the local price file.
+    
+    Args:
+        asset (str): Asset symbol (only BTC is supported)
+        lookback_minutes (int): How far back to fetch data in minutes
         
-        Args:
-            asset (str): Asset symbol (e.g., "BTC")
-            lookback_minutes (int): How far back to fetch data in minutes
-            
-        Returns:
-            numpy.ndarray: Array of historical prices
-        """
-        if asset == "BTC":
-            btc_price_id = "e62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43"
-            
-            # Calculate start and end times
-            end_time = int(time.time())
-            start_time = end_time - (lookback_minutes * 60)
-            
-            # Pyth historical API endpoint
-            endpoint = f"https://hermes.pyth.network/api/v1/price_history?id={btc_price_id}&start_time={start_time}&end_time={end_time}"
-            
-            try:
-                # Use aiohttp for async requests
-                async with aiohttp.ClientSession() as session:
-                    async with session.get(endpoint) as response:
-                        if response.status != 200:
-                            bt.logging.warning(f"Failed to get historical prices: HTTP {response.status}")
-                            return None
-                        
-                        data = await response.json()
-                        
-                        if not data or 'data' not in data or not data['data']:
-                            bt.logging.warning(f"No historical price data received for {asset}")
-                            return None
-                        
-                        # Extract prices from the historical data
-                        prices = []
-                        for entry in data['data']:
-                            # Convert price to standard format
-                            price = float(entry['price']) / (10**entry['expo'])
-                            prices.append(price)
-                        
-                        # Convert to numpy array and return
-                        return np.array(prices)
-                    
-            except Exception as e:
-                bt.logging.warning(f"Error fetching historical {asset} prices: {str(e)}")
-                
-                # Fallback to getting current price only if historical data fails
-                try:
-                    current_price = get_asset_price(asset)
-                    if current_price is not None:
-                        # Return an array with just the current price repeated
-                        return np.array([current_price] * 30)  # 30 data points with current price
-                except:
-                    pass
-                    
-                return None
-        else:
-            # For other assets, implement accordingly
-            bt.logging.warning(f"Historical data for asset '{asset}' not supported.")
+    Returns:
+        numpy.ndarray: Array of historical close prices
+    """
+    if asset != "BTC":
+        bt.logging.warning(f"Asset '{asset}' not supported")
+        return None
+        
+    try:
+        # Path to the price file
+        price_file = "/root/fetch_btc_price/btc_price_minute_new.txt"
+        
+        # Check if file exists
+        if not os.path.exists(price_file):
+            bt.logging.error(f"Price file not found: {price_file}")
             return None
+            
+        # Read the file into a pandas DataFrame
+        # Format: timestamp open high low close
+        df = pd.read_csv(price_file, sep=' ', header=None, 
+                         names=['timestamp', 'open', 'high', 'low', 'close'])
+        
+        # Convert timestamps to datetime objects
+        df['datetime'] = pd.to_datetime(df['timestamp'])
+        
+        # Sort by datetime in descending order (newest first)
+        df = df.sort_values('datetime', ascending=False)
+        
+        # Get current time
+        current_time = datetime.now()
+        
+        # Calculate cutoff time
+        cutoff_time = current_time - timedelta(minutes=lookback_minutes)
+        
+        # Filter data newer than cutoff time
+        recent_data = df[df['datetime'] >= cutoff_time]
+        
+        # If we don't have enough recent data, take the most recent available
+        if len(recent_data) < 30:
+            recent_data = df.head(40)  # Take at least 40 points
+            
+        # Extract close prices
+        close_prices = recent_data['close'].values
+        
+        # Ensure we have the prices in chronological order (oldest first)
+        close_prices = close_prices[::-1]
+        
+        bt.logging.info(f"Retrieved {len(close_prices)} historical price points")
+        return close_prices
+        
+    except Exception as e:
+        bt.logging.error(f"Error fetching historical prices from file: {e}")
+        return None
 
 def get_asset_price(asset="BTC"):
     """
