@@ -8,7 +8,7 @@ from synth.utils.helpers import (
     convert_prices_to_time_format,
 )
 
-def generate_simulations(
+async def generate_simulations(
     start_time=None,
     asset="BTC",
     time_increment=300,
@@ -51,7 +51,7 @@ def generate_simulations(
     if current_price is None:
         raise ValueError(f"Failed to fetch current price for asset: {asset}")
     
-    price_history = get_historical_prices()
+    price_history = await get_historical_prices()
 
     if model.lower() == "adaptive":
         simulations = simulate_crypto_price_paths_adaptive(
